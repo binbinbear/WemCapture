@@ -1,0 +1,11 @@
+/Debug
+
+/ipch
+
+*.sdf
+
+*.filters
+
+*.user
+
+*.sln
