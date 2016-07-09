@@ -1,0 +1,16 @@
+﻿Build started 7/8/2016 6:47:42 PM.
+     1>Project "E:\WorkSpace\WorkStation\WemCapture.Service\WemCapture.Service.vcxproj" on node 2 (Build target(s)).
+     1>ClCompile:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W4 /WX /sdl /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _LIB /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /GS /fp:precise /Zc:wchar_t /Zc:forScope /Yu"stdafx.h" /Fp"libs\Win32\Debug\WemCapture.Service.pch" /Fo"libs\Win32\Debug\\" /Fd"libs\Win32\Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt WemCapture.Service.cpp
+         WemCapture.Service.cpp
+       Link:
+         C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"E:\WorkSpace\WorkStation\WemCapture.Service\libs\Win32\Debug\WemCapture.Service.exe" /INCREMENTAL /NOLOGO /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /manifestinput:"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\Include\Manifest\dpiaware.manifest" /DEBUG /PDB:"E:\WorkSpace\WorkStation\WemCapture.Service\libs\Win32\Debug\WemCapture.Service.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"E:\WorkSpace\WorkStation\WemCapture.Service\libs\Win32\Debug\WemCapture.Service.lib" /MACHINE:X86 libs\Win32\Debug\ServiceDeploy.obj
+         libs\Win32\Debug\WemCaptureService.obj
+         libs\Win32\Debug\stdafx.obj
+         libs\Win32\Debug\WemCapture.Service.obj
+         WemCapture.Service.vcxproj -> E:\WorkSpace\WorkStation\WemCapture.Service\libs\Win32\Debug\WemCapture.Service.exe
+     1>Done Building Project "E:\WorkSpace\WorkStation\WemCapture.Service\WemCapture.Service.vcxproj" (Build target(s)).
+
+Build succeeded.
+
+Time Elapsed 00:00:01.16
