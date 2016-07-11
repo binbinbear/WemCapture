@@ -1,10 +1,23 @@
 #include "stdafx.h"
 #include "WemCaptureService.h"
 
+#include <iostream>       // std::cout, std::hex
+#include <string>         // std::string, std::u32string
+#include <locale>         // std::wstring_convert
+#include <codecvt>        // std::codecvt_utf8
+#include <cstdint>        // std::uint_least32_t
+#include <iostream>       // std::cout, std::hex
+#include <string>         // std::string, std::u32string
+#include <locale>         // std::wstring_convert
+#include <codecvt>        // std::codecvt_utf8
+#include <cstdint>        // std::uint_least32_t
+
 #include <WtsApi32.h>
 #include <tlhelp32.h>
 #include <VirtDisk.h>
+#include <winhttp.h>
 
+#pragma comment(lib,"winhttp.lib")
 #pragma comment(lib, "Wtsapi32.lib")
 #pragma comment(lib, "VirtDisk.lib")
 
@@ -13,6 +26,8 @@ const GUID VIRTUAL_STORAGE_TYPE_VENDOR_MICROSOFT = { 0xEC984AEC, 0xA0F9, 0x47e9,
 SERVICE_STATUS_HANDLE WemCaptureService::hStatus = NULL;
 HANDLE WemCaptureService::hStop = NULL;
 const PWSTR WemCaptureService::pwszServiceName = L"VMware WEM Capture Service";
+
+static PCWSTR GetVhdPath();
 
 VOID WINAPI WemCaptureService::ServiceMain(DWORD dwArgs, LPWSTR *lppszArgs)
 {
@@ -130,7 +145,7 @@ HRESULT WemCaptureService::SessionChanged(DWORD dwSessionEventType, PWTSSESSION_
     return S_OK;
 }
 
-static HRESULT MountVhd()
+static HRESULT MountVhd(PCWSTR path)
 {
     OPEN_VIRTUAL_DISK_PARAMETERS openParameters;
     openParameters.Version = OPEN_VIRTUAL_DISK_VERSION_1;
@@ -146,7 +161,8 @@ static HRESULT MountVhd()
     HANDLE vhdHandle;
 
     if (OpenVirtualDisk(&storageType,
-        L"c:\\vhd\\chrome-win7-x64.vhd", //TODO: get the vhd location from AV manager
+        //L"c:\\vhd\\chrome-win7-x64.vhd", //TODO: get the vhd location from AV manager
+		path,
         VIRTUAL_DISK_ACCESS_ATTACH_RO,
         OPEN_VIRTUAL_DISK_FLAG_NONE,
         &openParameters,
@@ -177,13 +193,37 @@ HRESULT WemCaptureService::StartCaptureAgent(DWORD dwSessionId)
     TOKEN_LINKED_TOKEN linkedToken = { 0 };
     TOKEN_ELEVATION_TYPE elevationType;
     DWORD dwSize;
+	//PCWSTR path = L"\\\\10.117.162.250\\Users\\chrome-win7-x64.vhd";
+	DWORD response;
+	WTSSendMessageA(WTS_CURRENT_SERVER_HANDLE,
+		dwSessionId,
+		"path",
+		5,
+		"1",
+		2,
+		MB_OK,
+		0,
+		&response,
+		TRUE);
+	char *path = (char *)GetVhdPath();
+	size_t len = strlen(path) + 1;
 
-    hr = MountVhd();
-    if (FAILED(hr))
-    {
-        goto SA_EXIT;
-    }
-	Sleep(30000);
+	wchar_t *wpath = new wchar_t[len];
+	for (int i = 0; i < len; ++i){
+		wpath[i] = path[i];
+	}
+	WTSSendMessage(WTS_CURRENT_SERVER_HANDLE,
+		dwSessionId,
+		L"path",
+		10,
+		wpath,
+		len*sizeof(wchar_t),
+		MB_OK,
+		0,
+		&response,
+		TRUE);
+
+    
     if (!WTSQueryUserToken(dwSessionId, &hToken))
     {
         hr = HRESULT_FROM_WIN32(GetLastError());
@@ -214,6 +254,16 @@ HRESULT WemCaptureService::StartCaptureAgent(DWORD dwSessionId)
         hr = HRESULT_FROM_WIN32(GetLastError());
         goto SA_EXIT;
     }
+
+
+	ImpersonateLoggedOnUser(hDupToken);
+	hr = MountVhd(wpath);
+    if (FAILED(hr))
+    {
+        goto SA_EXIT;
+    }
+	RevertToSelf();
+	Sleep(30000);
     
     hr = CreateWemAgent(hDupToken);
 
@@ -295,4 +345,159 @@ HRESULT WemCaptureService::CreateWemAgent(HANDLE hToken)
     CloseHandle(pi.hThread);
 
     return S_OK;
+}
+
+static PCWSTR GetVhdPath()
+{
+	HINTERNET hSession = WinHttpOpen(L"svservice",
+		WINHTTP_ACCESS_TYPE_NO_PROXY,
+		WINHTTP_NO_PROXY_NAME,
+		WINHTTP_NO_PROXY_BYPASS,
+		0);
+	PCWSTR ans = NULL;
+	DWORD dwValue = 2;
+	BOOL bRet = WinHttpSetOption(hSession,
+		WINHTTP_OPTION_CONNECT_RETRIES,
+		&dwValue,
+		sizeof(dwValue));
+
+	dwValue = WINHTTP_OPTION_REDIRECT_POLICY_ALWAYS;
+	bRet = WinHttpSetOption(hSession,
+		WINHTTP_OPTION_REDIRECT_POLICY,
+		&dwValue,
+		sizeof(dwValue));
+
+	/*
+	dwValue = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_1 | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2;
+	bRet = WinHttpSetOption(hSession,
+	WINHTTP_OPTION_SECURE_PROTOCOLS,
+	&dwValue,
+	sizeof(dwValue));
+	*/
+
+	dwValue = 0;
+
+	HINTERNET hConnect = WinHttpConnect(hSession,
+		//L"10.1.23.4",
+		L"10.112.116.209",
+		3001,
+		0);
+
+	HINTERNET hRqst = WinHttpOpenRequest(hConnect,
+		L"GET",
+		L"/user-logon-from-ws?name=administrator",
+		NULL,
+		WINHTTP_NO_REFERER,
+		WINHTTP_DEFAULT_ACCEPT_TYPES,
+		0);
+
+	/*
+	dwValue = SECURITY_FLAG_IGNORE_UNKNOWN_CA | SECURITY_FLAG_IGNORE_CERT_CN_INVALID | SECURITY_FLAG_IGNORE_CERT_DATE_INVALID | SECURITY_FLAG_IGNORE_CERT_WRONG_USAGE;
+	bRet = WinHttpSetOption(hRqst,
+	WINHTTP_OPTION_SECURITY_FLAGS,
+	&dwValue,
+	sizeof(dwValue));
+	*/
+
+	bRet = WinHttpSetCredentials(hRqst,
+		WINHTTP_AUTH_TARGET_SERVER,
+		WINHTTP_AUTH_SCHEME_NTLM,
+		NULL,
+		NULL,
+		NULL);
+
+	dwValue = WINHTTP_AUTOLOGON_SECURITY_LEVEL_LOW;
+	bRet = WinHttpSetOption(hRqst,
+		WINHTTP_OPTION_AUTOLOGON_POLICY,
+		&dwValue,
+		sizeof(dwValue));
+
+	bRet = WinHttpSendRequest(hRqst,
+		WINHTTP_NO_ADDITIONAL_HEADERS,
+		0,
+		WINHTTP_NO_REQUEST_DATA,
+		0,
+		0,
+		0);
+	/*bRet = WinHttpReceiveResponse(hRqst, NULL);
+
+	DWORD dwStatus;
+	dwValue = sizeof(DWORD);
+	bRet = WinHttpQueryHeaders(hRqst,
+	WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+	NULL,
+	&dwStatus,
+	&dwValue,
+	NULL);*/
+
+	//DWORD dwErr = GetLastError();
+	if (bRet)
+		bRet = WinHttpReceiveResponse(hRqst, NULL);
+
+	DWORD dwSize = 0;
+	DWORD dwDownloaded = 0;
+	// Keep checking for data until there is nothing left.
+	if (bRet)
+	{
+		do
+		{
+			// Check for available data.
+			dwSize = 0;
+			if (!WinHttpQueryDataAvailable(hRqst, &dwSize))
+			{
+				printf("Error %u in WinHttpQueryDataAvailable.\n",
+					GetLastError());
+				break;
+			}
+
+			// No more available data.
+			if (!dwSize)
+				break;
+
+			// Allocate space for the buffer.
+			WCHAR* pszOutBuffer = new WCHAR[dwSize + 1];
+			if (!pszOutBuffer)
+			{
+				printf("Out of memory\n");
+				break;
+			}
+
+			// Read the Data.
+			ZeroMemory(pszOutBuffer, sizeof(WCHAR)*(dwSize + 1));
+
+			if (!WinHttpReadData(hRqst, (LPVOID)pszOutBuffer,
+				dwSize, &dwDownloaded))
+			{
+				printf("Error %u in WinHttpReadData.\n", GetLastError());
+			}
+			else
+			{
+				//    wprintf(L"%s", pszOutBuffer);
+				//printf("%s", pszOutBuffer);
+				ans = pszOutBuffer;
+			}
+
+			// Free the memory allocated to the buffer.
+			//delete[] pszOutBuffer;
+
+			// This condition should never be reached since WinHttpQueryDataAvailable
+			// reported that there are bits to read.
+			if (!dwDownloaded)
+				break;
+
+		} while (dwSize > 0);
+	}
+	else
+	{
+		// Report any errors.
+		printf("Error %d has occurred.\n", GetLastError());
+	}
+
+	// Close any open handles.
+	if (hRqst) WinHttpCloseHandle(hRqst);
+	if (hConnect) WinHttpCloseHandle(hConnect);
+	if (hSession) WinHttpCloseHandle(hSession);
+	//wprintf(L"%s", ans);
+
+	return ans;
 }
