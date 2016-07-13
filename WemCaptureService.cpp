@@ -195,7 +195,7 @@ HRESULT WemCaptureService::StartCaptureAgent(DWORD dwSessionId)
     DWORD dwSize;
 	//PCWSTR path = L"\\\\10.117.162.250\\Users\\chrome-win7-x64.vhd";
 	DWORD response;
-	WTSSendMessageA(WTS_CURRENT_SERVER_HANDLE,
+	/*WTSSendMessageA(WTS_CURRENT_SERVER_HANDLE,
 		dwSessionId,
 		"path",
 		5,
@@ -204,7 +204,7 @@ HRESULT WemCaptureService::StartCaptureAgent(DWORD dwSessionId)
 		MB_OK,
 		0,
 		&response,
-		TRUE);
+		TRUE);*/
 	char *path = (char *)GetVhdPath();
 	size_t len = strlen(path) + 1;
 
@@ -212,7 +212,7 @@ HRESULT WemCaptureService::StartCaptureAgent(DWORD dwSessionId)
 	for (int i = 0; i < len; ++i){
 		wpath[i] = path[i];
 	}
-	WTSSendMessage(WTS_CURRENT_SERVER_HANDLE,
+	/*WTSSendMessage(WTS_CURRENT_SERVER_HANDLE,
 		dwSessionId,
 		L"path",
 		10,
@@ -221,7 +221,7 @@ HRESULT WemCaptureService::StartCaptureAgent(DWORD dwSessionId)
 		MB_OK,
 		0,
 		&response,
-		TRUE);
+		TRUE);*/
 
     
     if (!WTSQueryUserToken(dwSessionId, &hToken))
@@ -255,7 +255,7 @@ HRESULT WemCaptureService::StartCaptureAgent(DWORD dwSessionId)
         goto SA_EXIT;
     }
 
-
+	//wpath = L"\\\\172.31.30.198\\vhds\\chrome-win7-x64.vhd";
 	ImpersonateLoggedOnUser(hDupToken);
 	hr = MountVhd(wpath);
     if (FAILED(hr))
@@ -379,13 +379,13 @@ static PCWSTR GetVhdPath()
 
 	HINTERNET hConnect = WinHttpConnect(hSession,
 		//L"10.1.23.4",
-		L"10.112.116.209",
+		L"172.31.24.128",
 		3001,
 		0);
 
 	HINTERNET hRqst = WinHttpOpenRequest(hConnect,
 		L"GET",
-		L"/user-logon-from-ws?name=administrator",
+		L"/user-logon-from-ws?name=berniec",
 		NULL,
 		WINHTTP_NO_REFERER,
 		WINHTTP_DEFAULT_ACCEPT_TYPES,

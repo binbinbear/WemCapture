@@ -95,8 +95,9 @@ void MountVhd()
 
     HANDLE vhdHandle;
 
-    if (OpenVirtualDisk(&storageType,
-        L"c:\\vhd\\chrome-win7-x64.vhd",
+	if (OpenVirtualDisk(&storageType,
+		//L"c:\\vhd\\chrome-win7-x64.vhd",
+		L"\\\\172.31.30.198\\vhds\\chrome-win7-x64.vhd",
         VIRTUAL_DISK_ACCESS_ATTACH_RO,
         OPEN_VIRTUAL_DISK_FLAG_NONE,
         &openParameters,
@@ -189,11 +190,11 @@ int main()
 {
    printf("started\n");
     //StartAgent(1);
-	//MountVhd();
+	MountVhd();
 	//CreateAgent();
     //printf("finished\n");
-   PCWSTR path = GetVhdPath();
-   wprintf(L"%S", path);
+   //PCWSTR path = GetVhdPath();
+  // wprintf(L"%S", path);
     getchar();
     return 0;
 }
